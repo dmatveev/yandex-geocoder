@@ -51,6 +51,15 @@ toResult (Left s)  = Error s
 toResult (Right a) = Ok a
 
 
+(@@) :: JSON a => String -> JSObject JSValue -> Result a
+s @@ o = valFromObj s o
+
+(@#) :: JSON a => Result a -> a -> Result a
+value @# defvalue = Ok $ case value of
+    (Ok a)    -> a
+    (Error _) -> defvalue
+
+
 posParser :: Parser Position
 posParser = do
     lat <- parseExtFloat
@@ -67,11 +76,9 @@ readPos s = case parse posParser "" s of
 
 buildObjectFrom :: JSObject JSValue -> Result GeoObject
 buildObjectFrom obj = do
-    object  <- valFromObj "GeoObject" obj
-    name    <- valFromObj "name"      object
-
-    point   <- valFromObj "Point"     object
-    pos     <- valFromObj "pos"       point >>= readPos
+    object  <- "GeoObject" @@ obj
+    name    <- "name"      @@ object
+    pos     <- readPos =<< (@@) "pos" =<< "Point" @@ object
 
     return $ GeoObject { goName = name, goPos = pos }
  
@@ -84,21 +91,17 @@ buildObjectsFrom _ = Error "Object is not a JSON array"
 
 
 buildInfoFrom :: String -> Result GeoInfo
-buildInfoFrom jsondata = do
-    json         <- decode jsondata
-
-    response     <- valFromObj "response"                 json
-    header       <- valFromObj "GeoObjectCollection"      response
-    metadata     <- valFromObj "metaDataProperty"         header
-    respMetadata <- valFromObj "GeocoderResponseMetaData" metadata
-
-    request      <- valFromObj "request"                  respMetadata
-
-    results      <- valFromObj "featureMember"            header
-    objects      <- buildObjectsFrom results
+buildInfoFrom json = do
+    header  <- (@@) "GeoObjectCollection" =<< (@@) "response" =<< decode json
+    meta    <- (@@) "GeocoderResponseMetaData" =<< "metaDataProperty" @@ header    
+    
+    request <- "request"       @@ meta
+    suggest <- "suggest"       @@ meta   @# ""
+    results <- "featureMember" @@ header
+    objects <- buildObjectsFrom results
 
     return $ GeoInfo { giRequest   = request
-                     , giSuggested = ""
+                     , giSuggested = suggest
                      , giObjects   = objects }
      
 
