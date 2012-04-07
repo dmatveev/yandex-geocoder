@@ -18,9 +18,14 @@ module YandexGeocoder
 
 
 import Control.Monad (mapM)
-import Control.Exception (SomeException, handle, evaluate)
+
+import Codec.Binary.UTF8.String (encodeString, decodeString)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody, urlEncodeVars)
 import Text.JSON
+
+import Text.ParserCombinators.Parsec (Parser, parse, space)
+import Text.Parsec.Numbers (parseExtFloat)
+
 
 type APIKey = String
 
@@ -41,21 +46,34 @@ data GeoObject = GeoObject
     } deriving (Eq, Show)
 
 
-readPos :: String -> Position
-readPos s = Position { latitude = lat, longitude = long }
-    where (lat:long:_) = map read $ words s 
+toResult :: Either String a -> Result a
+toResult (Left s)  = Error s
+toResult (Right a) = Ok a
+
+
+posParser :: Parser Position
+posParser = do
+    lat <- parseExtFloat
+    space
+    long <- parseExtFloat
+    return $ Position lat long
+
+
+readPos :: String -> Result Position
+readPos s = case parse posParser "" s of
+              (Left s)  -> Error $ show s
+              (Right p) -> Ok p
 
 
 buildObjectFrom :: JSObject JSValue -> Result GeoObject
 buildObjectFrom obj = do
-   object <- valFromObj "GeoObject" obj
-   name   <- valFromObj "name"      object
+    object  <- valFromObj "GeoObject" obj
+    name    <- valFromObj "name"      object
 
-   point  <- valFromObj "Point"     object
-   pos    <- valFromObj "pos"       point 
-   
-   return $ GeoObject { goName = name
-                      , goPos  = readPos $ fromJSString pos }
+    point   <- valFromObj "Point"     object
+    pos     <- valFromObj "pos"       point >>= readPos
+
+    return $ GeoObject { goName = name, goPos = pos }
  
 
 buildObjectsFrom :: JSValue -> Result [GeoObject]
@@ -88,18 +106,11 @@ getGeoInfo :: APIKey -> String -> IO (Either String GeoInfo)
 getGeoInfo apikey location = do
     response <- simpleHTTP $ getRequest $ mkYndRq
     jsondata <- getResponseBody response
-
-    result <- handle handler $ evaluate $ buildInfoFrom jsondata
-    return $ fromResult $ result
+    return $ resultToEither $ buildInfoFrom $ decodeString jsondata
  
-  where mkYndRq  = "http://geocode-maps.yandex.ru/1.x/?" ++ rqParams 
-        rqParams = urlEncodeVars [ ("geocode", location)
-                                 , ("key"    , apikey  )
-                                 , ("format" , "json"  )
+  where mkYndRq  = "http://geocode-maps.yandex.ru/1.x/?" ++ rqParams
+
+        rqParams = urlEncodeVars [ ("geocode", encodeString location)
+                                 , ("key"    , apikey)
+                                 , ("format" , "json")
                                  ]
-
-        fromResult (Error e) = Left e
-        fromResult (Ok a)    = Right a
-
-        handler :: SomeException -> IO (Result a)
-        handler _ = return $ Error "exception occured during parsing" 
