@@ -76,8 +76,8 @@ readPos s = case parse posParser "" s of
 
 buildObjectFrom :: JSObject JSValue -> Result GeoObject
 buildObjectFrom obj = do
-    object  <- "GeoObject" @@ obj
-    name    <- "name"      @@ object
+    object  <- "GeoObject"  @@ obj
+    name    <- "name"       @@ object
     pos     <- readPos =<< (@@) "pos" =<< "Point" @@ object
 
     return $ GeoObject { goName = name, goPos = pos }
