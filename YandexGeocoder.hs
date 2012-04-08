@@ -35,14 +35,28 @@ data GeoInfo = GeoInfo
     , giObjects   :: [GeoObject]
     } deriving (Eq, Show)
 
+
 data Position = Position
     { latitude  :: Double
     , longitude :: Double
     } deriving (Eq, Show)
 
+
+data Bounds = Bounds
+    { lowerCorner :: Position
+    , upperCorner :: Position
+    } deriving (Eq, Show)
+
+
 data GeoObject = GeoObject
-    { goName :: String
-    , goPos  :: Position 
+    { goName        :: String
+    , goPos         :: Position
+
+    , goAddressLine :: String
+    , goCountry     :: String
+    , goCountryCode :: String
+
+    , goBounds      :: Bounds
     } deriving (Eq, Show)
 
 
@@ -81,7 +95,26 @@ buildObjectFrom obj = do
     name    <- "name"       @@ object
     pos     <- readPos =<< (@@) "pos" =<< "Point" @@ object
 
-    return $ GeoObject { goName = name, goPos = pos }
+    addr    <- (@@) "Country"          =<< (@@) "AddressDetails"   =<< 
+               (@@) "GeocoderMetaData" =<< (@@) "metaDataProperty" object
+
+    address <- "AddressLine"     @@ addr
+    country <- "CountryName"     @@ addr
+    ccode   <- "CountryNameCode" @@ addr
+
+    bounds  <- (@@) "Envelope" =<< "boundedBy" @@ object
+    lcorn   <- readPos =<< "lowerCorner" @@ bounds
+    ucorn   <- readPos =<< "upperCorner" @@ bounds
+
+    return $ GeoObject { goName        = name
+                       , goPos         = pos 
+
+                       , goAddressLine = address
+                       , goCountry     = country
+                       , goCountryCode = ccode
+
+                       , goBounds      = Bounds lcorn ucorn
+                       }
  
 
 buildObjectsFrom :: JSValue -> Result [GeoObject]
