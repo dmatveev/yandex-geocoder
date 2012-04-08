@@ -54,6 +54,7 @@ toResult (Right a) = Ok a
 (@@) :: JSON a => String -> JSObject JSValue -> Result a
 s @@ o = valFromObj s o
 
+
 (@#) :: JSON a => Result a -> a -> Result a
 value @# defvalue = Ok $ case value of
     (Ok a)    -> a
@@ -112,7 +113,6 @@ getGeoInfo apikey location = do
     return $ resultToEither $ buildInfoFrom $ decodeString jsondata
  
   where mkYndRq  = "http://geocode-maps.yandex.ru/1.x/?" ++ rqParams
-
         rqParams = urlEncodeVars [ ("geocode", encodeString location)
                                  , ("key"    , apikey)
                                  , ("format" , "json")

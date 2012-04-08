@@ -1,0 +1,17 @@
+Name:           YandexGeocoder
+Description:
+  Yandex.Maps Geocoder HTTP API client library.
+  Allows to find the associated geographic coordinates and other data from
+  other geographic data, such as street addresses.
+
+  Requires a Yandex API key (it can be obtained for free).
+Version:        0.0.1
+Author:         Dmitry Matveev
+Maintainer:     me@dmitrymatveev.co.uk
+
+Cabal-Version:  >= 1.2
+Build-Type:     Simple
+
+library
+  Exposed-Modules: YandexGeocoder
+  Build-Depends:   base >= 2.0, utf8-string, HTTP, json, parsec, ParsecTools
