@@ -93,18 +93,19 @@ buildObjectFrom :: JSObject JSValue -> Result GeoObject
 buildObjectFrom obj = do
     object  <- "GeoObject"  @@ obj
     name    <- "name"       @@ object
-    pos     <- readPos =<< (@@) "pos" =<< "Point" @@ object
+    pos     <- readPos =<< (@@) "pos"  =<< "Point"            @@ object
 
-    addr    <- (@@) "Country"          =<< (@@) "AddressDetails"   =<< 
-               (@@) "GeocoderMetaData" =<< (@@) "metaDataProperty" object
-
-    address <- "AddressLine"     @@ addr
+    bounds  <- (@@) "Envelope"         =<< "boundedBy"        @@ object
+    meta    <- (@@) "GeocoderMetaData" =<< "metaDataProperty" @@ object
+    addr    <- (@@) "Country"          =<< "AddressDetails"   @@ meta
+    
+    address <- "text"            @@ meta
     country <- "CountryName"     @@ addr
     ccode   <- "CountryNameCode" @@ addr
 
-    bounds  <- (@@) "Envelope" =<< "boundedBy" @@ object
     lcorn   <- readPos =<< "lowerCorner" @@ bounds
     ucorn   <- readPos =<< "upperCorner" @@ bounds
+    
 
     return $ GeoObject { goName        = name
                        , goPos         = pos 
