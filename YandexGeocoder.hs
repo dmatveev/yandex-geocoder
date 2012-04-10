@@ -3,16 +3,8 @@ module YandexGeocoder
           getGeoInfo
 
         , APIKey
-
-        , GeoInfo
-        , giRequest
-        , giSuggested
-        , giObjects
-
-        , GeoObject
-        , goName
-        , goPos
-
+        , GeoInfo(..)
+        , GeoObject(..)
         , Position(..)
         ) where
 
